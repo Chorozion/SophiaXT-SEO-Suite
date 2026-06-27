@@ -3,10 +3,19 @@
 High-level direction. Detailed, checkable status lives in [`TODO.md`](TODO.md).
 Tiers are defined in [`docs/tiers.md`](docs/tiers.md).
 
-## Now — Foundation (current)
+## Now — Foundation + v1.5 alignment (current)
 - Monorepo, contracts, mock connector, audit skeleton, dashboard shell.
 - **Sophia Stack extension** wired to `ctx` (real audit + safe metadata/schema).
+- **Targets Stack v1.5 "Stable":** builds on native `<head>` SEO (R1), versions +
+  targeted rollback (R2), `ctx.ai.embed`; one-click install scaffold (release
+  channel + compatibility matrix + sync checklist).
 - Proprietary governance + CI.
+
+## v1.5 "Stable" — joint cut with Sophia Stack
+- Finish one-click install interlock (confirm fetch format; publish `seo-suite-v0.2.0`).
+- Consume R3/R4/R5 as the Stack ships them (retire self-emit/inline workarounds).
+- Live-test in a running Stack; contribute the SEO half of the joint screenshots.
+- Pin the compatibility matrix; cut v1.5 together.
 
 ## Next — Make Tier 1 real
 - Unify the extension entry with `@sophiaxt/seo-core` (esbuild bundle).

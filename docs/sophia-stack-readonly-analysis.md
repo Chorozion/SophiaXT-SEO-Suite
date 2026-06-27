@@ -206,27 +206,29 @@ extension-requirements doc).
    page titles + `html` blocks (for JSON-LD/meta-bearing markup) as the supported
    path, and degrades the rest to "report-only."
 
-## 13. UPDATE — Sophia Stack shipped an Extension API v1
+## 13. UPDATE — Extension API v1 → v1.5 "Stable"
 
-Since this analysis was first written, the Sophia Stack session **shipped an
-extension/plugin system v1** (`Chorozion/Sophia-Stack` @ `main`). This changes the
-**primary** integration: rather than only reaching the site over HTTP
-(`/api/sophia/*`), the Suite installs as an **in-process extension** and talks to
-the host through a permissioned `ctx` API. The patch/rollback safety described
-above is exactly what `ctx.site.patch()` runs automatically.
+The Sophia Stack session shipped an **extension/plugin system** and is driving to
+**v1.5 "Stable"** (`Chorozion/Sophia-Stack` @ `main`). The **primary** integration
+is now an **in-process extension** talking to a permissioned `ctx` API, not HTTP.
+The patch/rollback safety described above is exactly what `ctx.site.patch()` runs.
 
-Available **today** via `ctx` (per the Stack's
-`docs/extensions/sophia-seo-suite-contract.md`): `site.read/patch/setCss`,
-`pages.read/patch`, `media.list`, `data.list/get/create/update/remove`,
-`settings.*`, `ai.generate` (provider-agnostic), `audit.log`,
-`routes.register` (served at `/api/extensions/<id>/*`), `admin.registerNav`,
-`hooks.on/emit`. Fired hooks: `page.afterSave`, `site.afterPatch`,
-`media.afterUpload`.
+**Shipped and relied on at v1.5** (per the coordination sync + commits
+`f691ebd`/`c89744d`): `site.read/patch(ops,label)/setCss`, `pages.read/patch`,
+`media.list`, `data.*`, `settings.*`, `ai.generate` + **`ai.embed`**, `audit.log`,
+`routes.register` (`/api/extensions/<id>/*`), `admin.registerNav`, `hooks.on/emit`.
+**Native SEO `<head>` metadata** (`model.seo` / `pages.<route>.seo` with
+description/canonical/robots/openGraph/twitter/jsonLd) **is rendered** (R1).
+**Enumerable versions + targeted rollback** via `ctx.versions.list()` /
+`ctx.versions.rollbackTo(id)` (R2). Fired hooks: `page.afterSave`,
+`site.afterPatch`, `media.afterUpload`, `payments.event`, `update.available`.
+Self-update + non-destructive auto-migration carries extension settings forward.
 
-**(planned)** and therefore not relied on: admin-panel rendering (`adminEntry`),
-background job execution, `ai.stream`/`ai.embed`, `media:write`, data-model
-registration, native SEO `<head>` metadata, core-fired `seo.audit.requested` /
-publish hooks, install/uninstall CLI.
+**🔜 this cycle (Stack committed for v1.5):** R3 (core-fire
+`seo.audit.requested` + publish/pre-save hooks), R4 (`ctx.jobs` execution), R5
+(`adminEntry` panel mount). **planned:** `ai.stream`, `media:write`, data-model
+registration, `audit:read`, configurable robots/llms. The Suite keeps self-emit/
+inline workarounds for R3/R4/R5 until they land (see `docs/compatibility.md`).
 
 → The Suite's real integration lives at `extensions/sophia-stack/` and is
 described in [`extension-integration.md`](./extension-integration.md). The

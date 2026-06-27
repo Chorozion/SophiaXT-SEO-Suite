@@ -25,6 +25,12 @@ Status of the **foundation** build and what comes next. Checked = exists in repo
 - [x] `CtxTransport` — adapts the Sophia Stack connector to the in-extension `ctx`
 - [x] Git governance (proprietary): LICENSE, CONTRIBUTING, CODE_OF_CONDUCT,
       CHANGELOG, ROADMAP, `.github/` (CI, issue/PR templates)
+- [x] **v1.5 alignment (extension 0.2.0):** build on shipped R1 (native `<head>`
+      SEO), R2 (versions + targeted rollback), `ctx.ai.embed`; `requires >=1.5.0`;
+      labelled patches; `/optimize-meta` `/add-schema` `/suggest-links` `/versions`
+      `/rollback`; forward-idempotent settings migration
+- [x] One-click install scaffold (WS4): release channel descriptor + release script;
+      compatibility matrix + v1.5 sync checklist
 
 ## ⏭️ Next (still foundation-adjacent, not yet built)
 
@@ -58,13 +64,16 @@ Status of the **foundation** build and what comes next. Checked = exists in repo
 
 ## 🧩 Depends on Sophia Stack (tracked as requirements, not our code)
 
-The connection mechanism is solved (Stack Extension API v1). These unlock native
-(vs. stored-but-not-served) SEO. See
-`docs/sophia-stack-extension-requirements.md` + the cross-session coordination
-channel:
+Joint target: **Sophia Stack v1.5 "Stable"**. See
+`docs/sophia-stack-extension-requirements.md`, `docs/compatibility.md`, and the
+coordination channel:
 
-- [ ] R1 — first-class SEO metadata rendered in `<head>` (`model.seo` / page `seo`) (P0)
-- [ ] R2 — enumerable versions + targeted rollback via `ctx` (P0)
-- [ ] R3–R10 — core-fired SEO/publish hooks, job execution, admin-panel mount,
-      `ai.embed`, data-model registration, `media:write`, `audit:read`,
-      configurable robots/llms + redirects
+- [x] R1 — native SEO metadata rendered in `<head>` — **SHIPPED**, in use
+- [x] R2 — enumerable versions + targeted rollback via `ctx` — **SHIPPED**, in use
+- [x] `ctx.ai.embed` — **SHIPPED**, used by `/suggest-links`
+- [ ] R3 — core-fired `seo.audit.requested` + publish/pre-save hooks (🔜 this cycle → drop self-emit)
+- [ ] R4 — `ctx.jobs` execution (🔜 this cycle → move re-audits to jobs)
+- [ ] R5 — `adminEntry` panel mount (🔜 this cycle → move UI off raw routes)
+- [ ] R7–R10 — data-model registration, `media:write`, `audit:read`, configurable robots/llms + redirects (planned)
+- [ ] Interlock release-channel fetch format with the Stack; publish `seo-suite-v0.2.0`
+- [ ] Live-test in a running v1.5 Stack; capture WS7 SEO screenshots

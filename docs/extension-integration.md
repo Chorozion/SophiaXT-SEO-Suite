@@ -26,9 +26,10 @@ permissioned `ctx` API. (For non-Stack platforms and standalone use, the abstrac
 ```
 
 The same connector + engine power both; only the transport differs. The extension
-constructs `SophiaStackConnector` with a `CtxTransport(ctx)` and
-`{ supportsRollback: false, versioning: "none" }` (the `ctx` API exposes no
-rollback trigger — safety still runs automatically inside the Stack on each patch).
+constructs `SophiaStackConnector` with a `CtxTransport(ctx)`. On Stack v1.5 the
+`ctx.versions` API gives true **`supportsRollback` + `versioning: "addressable"`**;
+the transport feature-detects and degrades gracefully on older hosts (though the
+manifest `requires.sophiaStack ">=1.5.0"` is the real gate).
 
 ## The extension (`extensions/sophia-stack/`)
 
@@ -45,10 +46,14 @@ rollback trigger — safety still runs automatically inside the Stack on each pa
 ### Routes (served at `/api/extensions/sophia-seo-suite/*`)
 - `GET /audit` — real audit over the live model (read-only).
 - `POST /plan-title` — **preview** a title change (no write); optional AI suggestion.
-- `POST /optimize-title` — **apply** a title (auth-gated) via `ctx.site.patch`.
-- `POST /optimize-meta` — set a page meta description (stored on `model.seo`).
-- `POST /add-schema` — additive JSON-LD via an `html` block.
-- `GET /health` — liveness + version.
+- `POST /optimize-title` — **apply** a labelled title patch (auth-gated).
+- `POST /optimize-meta` — set native `pages.<route>.seo.*` (description, canonical,
+  robots, openGraph, twitter) — **rendered in `<head>`** (R1).
+- `POST /add-schema` — append to native `seo.jsonLd[]` (rendered, script-safe).
+- `GET /suggest-links` — read-only internal-link suggestions via `ctx.ai.embed`.
+- `GET /versions` — enumerable named snapshots (R2).
+- `POST /rollback {id}` — targeted rollback of one change (R2), auth-gated.
+- `GET /health` — liveness + version + capability snapshot.
 
 ### Hooks
 Listens to `page.afterSave`, `site.afterPatch`, `media.afterUpload`; self-emits
@@ -61,8 +66,8 @@ Listens to `page.afterSave`, `site.afterPatch`, `media.afterUpload`; self-emits
 | Analyze (read-only) | `ctx.site.read()` → audit engine. |
 | Preview | `POST /plan-title` returns before/after; nothing written. |
 | Approve | mutating routes require `helpers.isAdmin`/`hasToken`; actor recorded. |
-| Apply | `ctx.site.patch(ops)` → validate-before-commit + snapshot + rollback + audit (automatic). |
-| Version / rollback | snapshots happen inside the Stack; `ctx` can't enumerate or trigger them yet (see requirements R4). |
+| Apply | `ctx.site.patch(ops, label)` → validate-before-commit + named snapshot + rollback + audit (automatic). |
+| Version / rollback | `ctx.versions.list()` enumerates named snapshots; `ctx.versions.rollbackTo(id)` reverts one change (R2, shipped). |
 | Audit log | `ctx.audit.log(action, details)`; owner reads via `GET /api/sophia/audit`. |
 
 ## Install (today)

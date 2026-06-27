@@ -1,5 +1,5 @@
 import type { SophiaModel, SophiaPatchOp } from "../model.js";
-import type { SophiaStackTransport } from "./transport.js";
+import type { SophiaStackTransport, SophiaVersionInfo } from "./transport.js";
 
 /**
  * Real transport against a live Sophia Stack server's `/api/sophia/*` API.
@@ -61,18 +61,23 @@ export class HttpTransport implements SophiaStackTransport {
     return (await res.json()) as { ok: boolean; changed: string[] };
   }
 
-  async rollback() {
+  async rollback(id?: string) {
+    // Stack v1.5: POST /api/sophia/rollback { id } for targeted rollback.
     const res = await this.fetchImpl(`${this.baseUrl}/api/sophia/rollback`, {
       method: "POST",
       headers: this.headers(true),
+      body: JSON.stringify(id ? { id } : {}),
     });
     if (!res.ok) throw new Error(`rollback failed: ${res.status}`);
     return (await res.json()) as { ok: boolean; restored: boolean; remaining: number };
   }
 
   async versions() {
+    // Stack v1.5: GET /api/sophia/versions → list of named snapshots.
     const res = await this.fetchImpl(`${this.baseUrl}/api/sophia/versions`, { headers: this.headers(true) });
     if (!res.ok) throw new Error(`versions failed: ${res.status}`);
-    return (await res.json()) as { count: number };
+    const body = (await res.json()) as { count?: number; versions?: SophiaVersionInfo[] };
+    const versions = body.versions ?? [];
+    return { count: body.count ?? versions.length, versions };
   }
 }

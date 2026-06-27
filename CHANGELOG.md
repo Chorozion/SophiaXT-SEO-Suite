@@ -6,6 +6,24 @@ follows [Keep a Changelog](https://keepachangelog.com/); the project uses
 
 ## [Unreleased]
 
+### v1.5 alignment — extension `0.2.0` (targets Sophia Stack v1.5 "Stable")
+- **Build on shipped Stack surfaces:** native SEO `<head>` metadata (R1),
+  enumerable versions + targeted rollback (R2), `ctx.ai.embed`.
+- **Extension:** `requires.sophiaStack ">=1.5.0"`; labelled patches; `/optimize-meta`
+  now sets native `pages.<route>.seo.*` (rendered in `<head>`); `/add-schema` appends
+  to native `seo.jsonLd[]`; new `/suggest-links` (embed-based, read-only), `/versions`,
+  and `/rollback {id}` routes; forward-idempotent settings migration (`migrateSettings`);
+  non-destructive `deactivate`.
+- **Connector/transports:** `CtxTransport` wires `ctx.versions.list/rollbackTo` +
+  labelled patch; HTTP/Mock transports gain named snapshots + targeted rollback;
+  connector `listVersions`/`rollback(id)` are real; `planSchemaAddition` uses native
+  `seo.jsonLd[]`; capabilities → `versioning: "addressable"`.
+- **One-click install (WS4):** release-channel descriptor
+  (`release/sophia-seo-suite/channel.json`) + release script (zip + sha256);
+  `docs/release-channel.md` proposes the fetch protocol for interlock.
+- **Sync collateral:** `docs/compatibility.md` (matrix), `docs/v1.5-sync-checklist.md`
+  (SEO half), `docs/screenshots/` placeholders.
+
 ### Added
 - **Foundation scaffold**: pnpm monorepo (`apps/`, `packages/`, `extensions/`),
   Docker Compose (Postgres + Redis), `.env.example`, strict TypeScript config.

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://sophiaxt.com/schemas/extension-channel.v0.json",
+  "id": "sophia-seo-suite",
+  "name": "Sophia SEO Suite",
+  "publisher": "SophiaXT",
+  "latest": "0.2.0",
+  "installDir": "sophia-seo-suite",
+  "versions": [
+    {
+      "version": "0.2.0",
+      "requires": { "sophiaStack": ">=1.5.0" },
+      "source": {
+        "repo": "Chorozion/SophiaXT-SEO-Suite",
+        "ref": "main",
+        "path": "extensions/sophia-stack",
+        "files": ["extension.json", "extension.js", "admin/index.js", "README.md"]
+      },
+      "artifact": {
+        "zip": "https://github.com/Chorozion/SophiaXT-SEO-Suite/releases/download/seo-suite-v0.2.0/sophia-seo-suite-0.2.0.zip",
+        "sha256": null,
+        "bytes": null
+      },
+      "changelog": "Targets Sophia Stack v1.5: native <head> metadata + JSON-LD (R1), enumerable versions + targeted rollback (R2), embed-based internal-link suggestions, labelled patches, forward-idempotent settings migration (safe updates)."
+    }
+  ]
+}

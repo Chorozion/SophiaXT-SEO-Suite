@@ -1,6 +1,11 @@
-import type { SophiaModel, SophiaPatchOp, SophiaSnapshot } from "../model.js";
+import type { SophiaModel, SophiaPatchOp } from "../model.js";
 import { SAMPLE_MODEL } from "../fixture.js";
-import type { SophiaStackTransport } from "./transport.js";
+import type { SophiaStackTransport, SophiaVersionInfo } from "./transport.js";
+
+/** A stored snapshot: the prior model + its v1.5 metadata (id/ts/label). */
+interface MockSnapshot extends SophiaVersionInfo {
+  model: SophiaModel;
+}
 
 /**
  * In-memory transport that reproduces Sophia Stack's patch semantics:
@@ -16,10 +21,16 @@ const HISTORY_LIMIT = 30;
 
 export class MockTransport implements SophiaStackTransport {
   private model: SophiaModel;
-  private history: SophiaSnapshot[] = [];
+  private history: MockSnapshot[] = [];
+  private seq = 0;
 
   constructor(seed: SophiaModel = structuredClone(SAMPLE_MODEL)) {
     this.model = structuredClone(seed);
+  }
+
+  private snapshot(label?: string): void {
+    this.history.push({ id: `snap-${++this.seq}`, ts: this.seq, label, model: structuredClone(this.model) });
+    if (this.history.length > HISTORY_LIMIT) this.history.shift();
   }
 
   async ping() {
@@ -43,14 +54,23 @@ export class MockTransport implements SophiaStackTransport {
       return { ok: true, changed };
     }
 
-    // Snapshot the *previous* state, then commit.
-    this.history.push({ model: structuredClone(this.model), label: opts?.label });
-    if (this.history.length > HISTORY_LIMIT) this.history.shift();
+    // Snapshot the *previous* state (named), then commit.
+    this.snapshot(opts?.label);
     this.model = draft;
     return { ok: true, changed };
   }
 
-  async rollback() {
+  async rollback(id?: string) {
+    if (id) {
+      // Targeted rollback (Stack v1.5): snapshot current first, then restore the
+      // named snapshot so the revert is itself reversible.
+      const target = this.history.find((s) => s.id === id);
+      if (!target) return { ok: false, restored: false, remaining: this.history.length };
+      this.snapshot("pre-rollback");
+      this.model = structuredClone(target.model);
+      return { ok: true, restored: true, remaining: this.history.length };
+    }
+    // Legacy: undo the last change.
     const snap = this.history.pop();
     if (!snap) return { ok: true, restored: false, remaining: 0 };
     this.model = snap.model;
@@ -58,7 +78,8 @@ export class MockTransport implements SophiaStackTransport {
   }
 
   async versions() {
-    return { count: this.history.length };
+    const versions: SophiaVersionInfo[] = this.history.map((s) => ({ id: s.id, ts: s.ts, label: s.label }));
+    return { count: versions.length, versions };
   }
 }
 

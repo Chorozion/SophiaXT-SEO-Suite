@@ -1,34 +1,42 @@
 import type { SophiaModel, SophiaPatchOp } from "../model.js";
-import type { SophiaStackTransport } from "./transport.js";
+import type { SophiaStackTransport, SophiaVersionInfo } from "./transport.js";
 
 /**
  * The slice of a Sophia Stack extension `ctx` this transport needs. Mirrors the
- * integration contract (`docs/extensions/sophia-seo-suite-contract.md` in the
- * Sophia Stack repo). `ctx.site.read()` is synchronous and returns the model;
- * `ctx.site.patch(ops)` runs validate-before-commit + snapshot + rollback + audit
- * inside the Stack automatically.
+ * integration contract + the v1.5 coordination sync. `ctx.site.read()` is
+ * synchronous and returns the model; `ctx.site.patch(ops, label?)` runs
+ * validate-before-commit + snapshot + rollback + audit inside the Stack, and
+ * (v1.5) names the snapshot with `label`. `ctx.versions` is the v1.5 history API.
  */
 export interface SophiaCtxLike {
   site: {
     read(): SophiaModel;
-    patch(ops: SophiaPatchOp[]): { ok: boolean; changed?: string[]; error?: string };
+    patch(ops: SophiaPatchOp[], label?: string): { ok: boolean; changed?: string[]; error?: string };
+  };
+  /** Stack v1.5: enumerable history + targeted rollback. Optional → feature-detected. */
+  versions?: {
+    list(): SophiaVersionInfo[] | Promise<SophiaVersionInfo[]>;
+    rollbackTo(id: string): { ok: boolean } | Promise<{ ok: boolean }>;
   };
 }
 
 /**
- * In-process transport backed by the Stack extension `ctx`. This is the PRIMARY,
- * real integration: when the Suite runs as an installed Stack extension it talks
- * to the host through `ctx`, not over HTTP. Reads are synchronous under the hood
- * but the transport interface stays async for parity with HTTP/mock.
+ * In-process transport backed by the Stack extension `ctx` — the PRIMARY, real
+ * integration. Reads are synchronous under the hood; the interface stays async
+ * for parity with HTTP/mock.
  *
- * Capability note: `ctx` exposes no rollback or version-history read, so a
- * connector using this transport should be constructed with
- * `{ supportsRollback: false, versioning: "none" }`. Rollback safety still
- * happens automatically inside the Stack on every `patch`; the extension just
- * can't trigger or enumerate it.
+ * v1.5: with `ctx.versions` present, the connector gets true `supportsRollback`
+ * and `versioning: "addressable"`. If a deployment somehow lacks it (older host),
+ * the transport degrades to no-history rather than throwing — the manifest's
+ * `requires.sophiaStack ">=1.5.0"` is the real gate.
  */
 export class CtxTransport implements SophiaStackTransport {
   constructor(private readonly ctx: SophiaCtxLike) {}
+
+  /** True when the host exposes the v1.5 versions API. */
+  get hasVersions(): boolean {
+    return typeof this.ctx.versions?.list === "function" && typeof this.ctx.versions?.rollbackTo === "function";
+  }
 
   async ping() {
     const model = this.ctx.site.read();
@@ -39,19 +47,29 @@ export class CtxTransport implements SophiaStackTransport {
     return this.ctx.site.read();
   }
 
-  async patch(ops: SophiaPatchOp[]) {
-    const r = this.ctx.site.patch(ops);
+  async patch(ops: SophiaPatchOp[], opts?: { label?: string; dryRun?: boolean }) {
+    if (opts?.dryRun) {
+      // No ctx dry-run; report intent without writing.
+      return { ok: true, changed: [] };
+    }
+    const r = this.ctx.site.patch(ops, opts?.label);
     if (!r.ok) throw new Error(`ctx.site.patch rejected: ${r.error ?? "unknown"}`);
     return { ok: true, changed: r.changed ?? [] };
   }
 
-  async rollback() {
-    // No ctx-level rollback today (see contract). Safety still applies inside the
-    // Stack automatically on each patch; the extension cannot trigger undo.
-    return { ok: false, restored: false, remaining: 0 };
+  async rollback(id?: string) {
+    if (!this.hasVersions || !id) {
+      // No ctx rollback trigger without the v1.5 versions API + a target id.
+      return { ok: false, restored: false, remaining: 0 };
+    }
+    const r = await this.ctx.versions!.rollbackTo(id);
+    const remaining = (await this.versions()).count;
+    return { ok: !!r.ok, restored: !!r.ok, remaining };
   }
 
   async versions() {
-    return { count: 0 };
+    if (!this.hasVersions) return { count: 0 };
+    const list = await this.ctx.versions!.list();
+    return { count: list.length, versions: list };
   }
 }

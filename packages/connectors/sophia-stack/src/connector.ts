@@ -25,22 +25,24 @@ import type { SophiaStackTransport } from "./transport/transport.js";
 import { MockTransport } from "./transport/mock.js";
 
 /**
- * Capabilities as Sophia Stack stands TODAY (see read-only analysis):
- *   - titles are natively editable (page title path)
- *   - full meta/canonical/OG are NOT native yet → meta edits are partial; we set
- *     what we can (title) and stage the rest as an html-block payload / report
- *   - JSON-LD can be added via an `html` block (additive, non-destructive)
- *   - rollback is "stack" style (pop last); versioning list is count-only
+ * Capabilities as Sophia Stack stands at v1.5 (see read-only analysis + the
+ * coordination sync):
+ *   - page title AND full SEO meta (description/canonical/robots/openGraph/twitter/
+ *     jsonLd) are natively settable via `pages.<route>.seo.*` / `model.seo.*` and
+ *     RENDERED in <head> (R1 shipped) — page overrides site, all escaped
+ *   - JSON-LD can also be added via an `html` block (additive, non-destructive)
+ *   - versions are enumerable and rollback is TARGETED by id (R2 shipped)
+ *   - sitemap/llms.txt remain auto-derived (configurable variants still planned)
  */
 const SOPHIA_STACK_CAPS: ConnectorCapabilities = {
   supportsBlocks: true,
   supportsDrafts: false, // Sophia Stack has no draft state; suite holds drafts in its DB
-  supportsRollback: true,
-  canEditMeta: true, // titles native; richer meta pending extension R1
-  canAddSchema: true, // via html block today
-  canEditSitemap: false, // sitemap is auto-derived; config pending extension R2
-  canEditLlmsTxt: false, // llms.txt is auto-derived; config pending extension R2
-  versioning: "stack",
+  supportsRollback: true, // R2: targeted rollback by snapshot id
+  canEditMeta: true, // R1: full meta rendered in <head>
+  canAddSchema: true, // native jsonLd[] + html-block fallback
+  canEditSitemap: false, // sitemap auto-derived; config still planned
+  canEditLlmsTxt: false, // llms.txt auto-derived; config still planned
+  versioning: "addressable", // R2: named, enumerable snapshots
 };
 
 export interface SophiaStackConnectorOptions {
@@ -136,9 +138,9 @@ export class SophiaStackConnector implements SiteConnector {
     // description/canonical/og: native after extension R1. Today we stage them on
     // the model's (non-rendered) `seo` path so nothing is lost, and mark the
     // changeset reportOnly for the parts the live renderer won't surface yet.
-    // description/canonical/og: these are valid model paths, so the patch DOES
-    // apply (nothing is lost). The live renderer just won't surface them in
-    // <head> until Sophia Stack extension R1 lands — noted in the preview.
+    // description/canonical/robots/openGraph/twitter: native `pages.<route>.seo.*`
+    // paths that Sophia Stack v1.5 RENDERS in <head> (R1 shipped). Page values
+    // override site-level `model.seo.*`.
     const richKeys: (keyof SeoMeta)[] = ["description", "canonical", "robots", "openGraph", "twitter"];
     for (const key of richKeys) {
       const val = input.meta[key];
@@ -148,7 +150,6 @@ export class SophiaStackConnector implements SiteConnector {
           target: input.pageId,
           field: `seo.${String(key)}`,
           after: typeof val === "string" ? val : JSON.stringify(val),
-          note: "Stored on model.seo; rendered in <head> once Sophia Stack extension R1 lands.",
         });
       }
     }
@@ -162,24 +163,19 @@ export class SophiaStackConnector implements SiteConnector {
   }
 
   async planSchemaAddition(input: SchemaAdditionInput): Promise<ChangeSet> {
-    // Additive: inject JSON-LD via an `html` block (non-destructive escape hatch).
-    const blockId = `seo-jsonld-${slug(input.pageId)}-${++this.seq}`;
-    const json = JSON.stringify(input.jsonLd);
-    const op: SophiaPatchOp = {
-      op: "add",
-      route: input.pageId,
-      value: {
-        id: blockId,
-        type: "html",
-        html: `<script type="application/ld+json">${escapeForHtml(json)}</script>`,
-      },
-    };
+    // Stack v1.5: append to the native `pages.<route>.seo.jsonLd[]` array, which
+    // the Stack renders as a script-safe <script type="application/ld+json">.
+    // Additive — existing entries are preserved.
+    const page = await this.getPage(input.pageId);
+    const existing = page.seo?.jsonLd ?? [];
+    const next = [...existing, input.jsonLd];
+    const op: SophiaPatchOp = { op: "mset", path: `pages.${input.pageId}.seo.jsonLd`, value: next };
     return this.changeSet({
       summary: `Add JSON-LD schema to ${input.pageId}`,
       capabilityRequired: "canAddSchema",
       ops: [op],
       previewChanges: [
-        { target: input.pageId, field: "jsonLd", after: json, note: `Adds html block ${blockId}.` },
+        { target: input.pageId, field: "seo.jsonLd", after: JSON.stringify(input.jsonLd), note: "Appended to native seo.jsonLd[] (rendered in <head>)." },
       ],
     });
   }
@@ -237,20 +233,26 @@ export class SophiaStackConnector implements SiteConnector {
     return { ok: true, detail: "Sophia Stack applies patches live; no separate publish step." };
   }
 
-  async rollback(_versionId: string): Promise<RollbackResult> {
-    // Today: stack-style pop of the last snapshot. Targeted rollback by version
-    // arrives with extension R4; until then we honor "undo last".
-    const r = await this.transport.rollback();
-    return { ok: r.ok, remaining: r.remaining, detail: r.restored ? "Reverted last change." : "Nothing to roll back." };
+  async rollback(versionId: string): Promise<RollbackResult> {
+    // Stack v1.5: targeted rollback by snapshot id (reverts one change; the host
+    // snapshots current first so the revert is itself reversible).
+    const r = await this.transport.rollback(versionId);
+    return {
+      ok: r.ok,
+      restoredVersionId: r.restored ? versionId : undefined,
+      remaining: r.remaining,
+      detail: r.restored ? `Reverted to ${versionId}.` : "Nothing to roll back.",
+    };
   }
 
   async listVersions(): Promise<Version[]> {
-    // Count-only today (extension R4 adds a real list). Represent as N opaque refs.
-    const { count } = await this.transport.versions();
-    return Array.from({ length: count }, (_v, i) => ({
-      id: `snap-${i}`,
+    // Stack v1.5: enumerable named snapshots.
+    const { versions } = await this.transport.versions();
+    return (versions ?? []).map((v) => ({
+      id: v.id,
       connectorId: this.id,
-      createdAt: "",
+      createdAt: typeof v.ts === "number" ? new Date(v.ts).toISOString() : "",
+      label: v.label,
       changeSetId: "",
       appliedBy: { userId: "unknown", role: "developer" as const },
     }));
@@ -315,11 +317,3 @@ function normalizeSeo(seo: Record<string, unknown>): SeoMeta {
   };
 }
 
-function slug(s: string): string {
-  return s.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "root";
-}
-
-/** Prevent `</script>` breakout inside the injected JSON-LD block. */
-function escapeForHtml(json: string): string {
-  return json.replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
-}

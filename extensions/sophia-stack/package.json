@@ -8,6 +8,7 @@
   "files": ["extension.json", "extension.js", "admin/"],
   "scripts": {
     "lint": "echo \"(lint not configured yet)\"",
-    "pack:ext": "node ./scripts/pack.mjs"
+    "pack:ext": "node ./scripts/pack.mjs",
+    "release": "node ./scripts/release.mjs"
   }
 }
