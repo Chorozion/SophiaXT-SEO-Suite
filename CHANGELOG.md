@@ -11,7 +11,11 @@ follows [Keep a Changelog](https://keepachangelog.com/); the project uses
   enumerable versions + targeted rollback (R2), `ctx.ai.embed`, **admin panels (R5)**.
 - **R5 owner panel:** `ctx.admin.registerPanel` + a real self-contained UI at
   `/panel` (audit, metadata editor, JSON-LD schema, internal-link suggestions,
-  versions + rollback); `registerNav` fallback on pre-R5 hosts.
+  versions + rollback); `registerNav` fallback on pre-R5 hosts. The `/panel` route
+  is auth-gated and **server-seeds** audit/versions for instant first paint
+  (client still refreshes on demand).
+- **WS7 screenshots:** `docs/screenshots/panel-audit.png` + `panel-after-fixes.png`
+  captured from a real Stack; "See it in action" added to the README.
 - **Extension:** `requires.sophiaStack ">=1.5.0"`; labelled patches; `/optimize-meta`
   now sets native `pages.<route>.seo.*` (rendered in `<head>`); `/add-schema` appends
   to native `seo.jsonLd[]`; new `/suggest-links` (embed-based, read-only), `/versions`,

@@ -1,17 +1,24 @@
-# Screenshots (SEO half of the joint v1.5 demo — WS7)
+# Screenshots — SEO half of the joint v1.5 demo (WS7)
 
-Placeholders for the SEO Suite's contribution to the joint "See it in action"
-section. These require a **live Sophia Stack deployment** with the Suite installed
-(they can't be captured from the in-memory mock), so they're pending a live test.
+Captured from the **real Sophia Stack** with the extension installed (not the mock).
+The owner panel (`ctx.admin.registerPanel` → `/panel`) rendered live, server-seeded.
 
-Planned stills (+ a short GIF):
+| File | Shows |
+| --- | --- |
+| `panel-audit.png` | SEO audit running — **78/100** with findings (missing description, JSON-LD, title length). |
+| `panel-after-fixes.png` | After applying safe fixes — **90/100**, findings cleared, plus **Versions & Rollback** with two named snapshots (`seo: meta`, `seo: schema`) and per-change **Roll back**. |
 
-1. `audit-run.png` — `GET /api/extensions/sophia-seo-suite/audit` returning real
-   findings + score for a site.
-2. `apply-fix.png` — applying a title/meta/JSON-LD fix safely (preview → approve →
-   `ctx.site.patch`), with the change reflected in the rendered `<head>`.
-3. `versions-rollback.png` — the named version list + a targeted rollback.
+![SEO audit](./panel-audit.png)
+![After fixes + versions](./panel-after-fixes.png)
 
-Capture once the extension is installed in a running v1.5 Stack (see
-`docs/release-channel.md` for install). Then add a "See it in action" section to
-the repo README referencing these.
+These are the SEO contribution to the joint "See it in action" section. The Sophia
+Stack session can pull them into both READMEs via raw URLs (public repo):
+
+```
+https://raw.githubusercontent.com/Chorozion/SophiaXT-SEO-Suite/main/docs/screenshots/panel-audit.png
+https://raw.githubusercontent.com/Chorozion/SophiaXT-SEO-Suite/main/docs/screenshots/panel-after-fixes.png
+```
+
+> Pending: capture the panel **inside the dashboard tab** (one-click install) once
+> the Stack bumps `VERSION` to `1.5.0` so the `requires ">=1.5.0"` extension
+> installs via the button; and a short GIF of the audit → apply → rollback loop.

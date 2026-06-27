@@ -194,10 +194,18 @@ export default {
     // GET /panel — the owner UI (R5). Rendered by the Stack as a dashboard tab
     // (iframed, same-origin → its fetches carry the owner session). The shell is
     // static HTML; all data/actions go through the auth-gated routes above.
-    ctx.routes.register("/panel", async (req, res, _h) => {
+    ctx.routes.register("/panel", async (req, res, h) => {
+      if (!h.isAdmin && !h.hasToken) return h.send(res, 401, { error: "auth required" });
+      let html = PANEL_HTML;
+      try {
+        // Server-side seed → instant first paint (no fetch flash); client still
+        // refreshes on demand. `<` escaped to prevent any script breakout.
+        const seed = { audit: auditModel(ctx.site.read()), versions: hasVersions ? await ctx.versions.list() : [] };
+        html = html.replace("/*__SEED__*/", "window.__SEED__=" + JSON.stringify(seed).replace(/</g, "\\u003c") + ";");
+      } catch (_e) { /* fall back to fetch-on-load */ }
       res.statusCode = 200;
       if (typeof res.setHeader === "function") res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.end(PANEL_HTML);
+      res.end(html);
     });
 
     // --- Hooks: drive re-audits from content changes ---------------------
@@ -474,6 +482,7 @@ const PANEL_HTML = `<!doctype html>
     <div id="versions"></div>
   </div>
 
+<script>/*__SEED__*/</script>
 <script>
   var API='/api/extensions/sophia-seo-suite';
   function J(){return {credentials:'same-origin',headers:{'Content-Type':'application/json'}};}
@@ -481,21 +490,22 @@ const PANEL_HTML = `<!doctype html>
   async function post(p,b){var o=J();o.method='POST';o.body=JSON.stringify(b||{});var r=await fetch(API+p,o);return r.json();}
   function esc(s){return String(s).replace(/[&<>]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':'&gt;';});}
 
+  function renderAudit(d){
+    document.getElementById('score').textContent=(d.score!=null?d.score:'?')+' / 100';
+    document.getElementById('score').className='score';
+    var html='';
+    (d.findings||[]).forEach(function(f){
+      var sev=f.severity==='high'||f.severity==='critical'?'hi':(f.severity==='medium'?'me':'lo');
+      var where=f.target&&f.target.pageId?f.target.pageId:(f.target&&f.target.scope||'');
+      html+='<div class="f"><span class="dot '+sev+'"></span><div><div>'+esc(f.title)+'</div>'
+          +'<div class="muted">'+esc(f.code)+' · '+esc(where)+(f.suggestion?' → '+esc(f.suggestion):'')+'</div></div></div>';
+    });
+    document.getElementById('findings').innerHTML=html||'<p class="muted">No findings — clean.</p>';
+  }
   async function runAudit(){
     document.getElementById('score').textContent='…';
-    try{
-      var d=await get('/audit');
-      document.getElementById('score').textContent=(d.score!=null?d.score:'?')+' / 100';
-      document.getElementById('score').className='score';
-      var html='';
-      (d.findings||[]).forEach(function(f){
-        var sev=f.severity==='high'||f.severity==='critical'?'hi':(f.severity==='medium'?'me':'lo');
-        var where=f.target&&f.target.pageId?f.target.pageId:(f.target&&f.target.scope||'');
-        html+='<div class="f"><span class="dot '+sev+'"></span><div><div>'+esc(f.title)+'</div>'
-            +'<div class="muted">'+esc(f.code)+' · '+esc(where)+(f.suggestion?' → '+esc(f.suggestion):'')+'</div></div></div>';
-      });
-      document.getElementById('findings').innerHTML=html||'<p class="muted">No findings — clean.</p>';
-    }catch(e){document.getElementById('findings').innerHTML='<p class="muted">'+esc(e)+'</p>';}
+    try{renderAudit(await get('/audit'));}
+    catch(e){document.getElementById('findings').innerHTML='<p class="muted">'+esc(e)+'</p>';}
   }
   async function optTitle(){
     var b={route:document.getElementById('m_route').value};
@@ -511,16 +521,18 @@ const PANEL_HTML = `<!doctype html>
     show('schema_out',await post('/add-schema',{route:document.getElementById('s_route').value,jsonLd:j}));
   }
   async function suggest(){show('links_out',{loading:true});show('links_out',await get('/suggest-links'));}
-  async function loadVersions(){
-    var d=await get('/versions');var html='';
-    (d.versions||[]).forEach(function(v){
+  function renderVersions(list){
+    var html='';
+    (list||[]).forEach(function(v){
       html+='<div class="ver"><span>'+esc(v.label||v.id)+' <span class="muted">'+esc(v.id)+'</span></span>'
           +'<button class="ghost" onclick="rollback(\\''+esc(v.id)+'\\')">Roll back</button></div>';
     });
     document.getElementById('versions').innerHTML=html||'<p class="muted">No snapshots yet.</p>';
   }
+  async function loadVersions(){renderVersions((await get('/versions')).versions||[]);}
   async function rollback(id){if(!confirm('Roll back to '+id+'?'))return;await post('/rollback',{id:id});loadVersions();runAudit();}
   function show(id,obj){document.getElementById(id).textContent=JSON.stringify(obj,null,2);document.getElementById(id).className='';}
-  runAudit();
+  // Seed (server-injected) → instant render; else fetch on load.
+  if(window.__SEED__){if(window.__SEED__.audit)renderAudit(window.__SEED__.audit);if(window.__SEED__.versions)renderVersions(window.__SEED__.versions);}else{runAudit();loadVersions();}
 </script>
 </body></html>`;

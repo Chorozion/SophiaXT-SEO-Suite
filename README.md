@@ -136,6 +136,16 @@ cp -r extensions/sophia-stack  <deployment>/.sophia-data/extensions/sophia-seo-s
 
 ---
 
+## See it in action
+
+The owner panel, running live inside a Sophia Stack deployment — an SEO audit, then
+the score after applying safe fixes (with named versions + one-click rollback):
+
+![SEO audit running](docs/screenshots/panel-audit.png)
+![After fixes — score up, versions + rollback](docs/screenshots/panel-after-fixes.png)
+
+More: [`docs/v1.5-live-test.md`](docs/v1.5-live-test.md) (full lifecycle verified).
+
 ## Relationship to Sophia Stack (read this)
 
 **Sophia Stack is a read-only reference for this project.** We do not modify it.
