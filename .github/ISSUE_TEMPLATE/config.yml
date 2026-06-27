@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: mailto:security@sophiaxt.com
+    about: Report a vulnerability privately. Do NOT open a public issue for security.
+  - name: Sophia Stack capability request
+    url: https://github.com/Chorozion/Sophia-Stack
+    about: Needs from the Stack go through docs/sophia-stack-extension-requirements.md and the coordination channel.

@@ -1,0 +1,7 @@
+# Sophia SEO Suite — pnpm workspace
+# Monorepo layout: one app (dashboard) + many internal packages.
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "packages/connectors/*"
+  - "extensions/*"

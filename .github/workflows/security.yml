@@ -1,0 +1,41 @@
+name: security
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --no-frozen-lockfile
+      - name: Dependency audit (high+)
+        run: pnpm audit --audit-level high || true
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard against committed secrets / absolute paths
+        run: |
+          set -e
+          # Fail if a real .env is tracked.
+          if git ls-files | grep -E '(^|/)\.env$'; then
+            echo "::error::A .env file is tracked. Secrets must never be committed."; exit 1
+          fi
+          # Fail on Windows absolute local paths (literal `:\` — URLs use `:/`, so safe).
+          if git grep -nF -e ':\Users' -e ':\sophiaxt' -e '\COLD LAB' -- '*.md' '*.ts' '*.js' '*.json'; then
+            echo "::error::Absolute local path leaked into a tracked file."; exit 1
+          fi
+          echo "secret-scan: ok"

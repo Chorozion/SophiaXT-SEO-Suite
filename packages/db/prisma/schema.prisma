@@ -1,0 +1,191 @@
+// Sophia SEO Suite — Prisma schema DRAFT (foundation).
+//
+// This models the safe-editing lifecycle (draft → approve → apply → version) and
+// multi-tenant structure. It is a DRAFT: field sets are deliberately conservative
+// and will be reviewed before the first migration (see TODO.md). Secrets are
+// stored encrypted (see ConnectorCredential) — never in plaintext.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Tenancy & people --------------------------------------------------------
+
+model Organization {
+  id        String       @id @default(cuid())
+  name      String
+  tier      Tier         @default(starter)
+  createdAt DateTime     @default(now())
+  members   Membership[]
+  sites     Site[]
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String?
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+  approvals   Version[]    @relation("ApprovedBy")
+}
+
+model Membership {
+  id    String @id @default(cuid())
+  role  Role   @default(owner)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId String
+
+  @@unique([userId, orgId])
+}
+
+// --- Sites & connectors ------------------------------------------------------
+
+model Site {
+  id         String   @id @default(cuid())
+  name       String
+  baseUrl    String?
+  platform   String   // e.g. "sophia-stack"
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId      String
+  createdAt  DateTime @default(now())
+
+  credential ConnectorCredential?
+  auditRuns  AuditRun[]
+  drafts     Draft[]
+  versions   Version[]
+  jobs       Job[]
+  reports    Report[]
+}
+
+/// Encrypted-at-rest connector credentials. `ciphertext` is AES-256-GCM using
+/// CONNECTOR_ENCRYPTION_KEY (env). NEVER store a plaintext token here.
+model ConnectorCredential {
+  id         String   @id @default(cuid())
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId     String   @unique
+  ciphertext String   // base64(iv | authTag | encrypted-token)
+  scope      String?  // e.g. "editor"
+  updatedAt  DateTime @updatedAt
+}
+
+// --- Audit / findings --------------------------------------------------------
+
+model AuditRun {
+  id         String    @id @default(cuid())
+  site       Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId     String
+  score      Int       // 0–100 overall
+  createdAt  DateTime  @default(now())
+  findings   Finding[]
+}
+
+model Finding {
+  id         String   @id @default(cuid())
+  run        AuditRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId      String
+  code       String
+  module     String
+  severity   Severity
+  title      String
+  detail     String?
+  targetJson Json     // FindingTarget
+  suggestion Json?    // SuggestedChangeHint
+}
+
+// --- Safe-editing lifecycle --------------------------------------------------
+
+model Draft {
+  id            String      @id @default(cuid())
+  site          Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId        String
+  module        String
+  status        DraftStatus @default(DRAFT)
+  summary       String
+  changeSetJson Json        // serialized ChangeSet (ops + preview)
+  reportOnly    Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  version       Version?
+}
+
+model Version {
+  id               String   @id @default(cuid())
+  site             Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId           String
+  draft            Draft?   @relation(fields: [draftId], references: [id])
+  draftId          String?  @unique
+  label            String?
+  appliedBy        User     @relation("ApprovedBy", fields: [appliedById], references: [id])
+  appliedById      String
+  beforeSnapshot   Json?    // captured for revert + audit (esp. when no server rollback)
+  connectorVersion String?  // platform's own version handle, if any
+  createdAt        DateTime @default(now())
+}
+
+// --- Jobs & reports ----------------------------------------------------------
+
+model Job {
+  id        String    @id @default(cuid())
+  site      Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId    String
+  queue     String    // "crawl" | "audit" | "report"
+  status    JobStatus @default(queued)
+  payload   Json?
+  error     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId    String
+  kind      String   // "weekly" | "white-label"
+  data      Json
+  createdAt DateTime @default(now())
+}
+
+// --- Enums -------------------------------------------------------------------
+
+enum Tier {
+  starter
+  growth
+  agency
+}
+
+enum Role {
+  owner
+  agency
+  developer
+  client
+}
+
+enum Severity {
+  info
+  low
+  medium
+  high
+  critical
+}
+
+enum DraftStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  APPLIED
+  REJECTED
+  ROLLED_BACK
+}
+
+enum JobStatus {
+  queued
+  running
+  done
+  failed
+}

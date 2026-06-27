@@ -1,0 +1,13 @@
+{
+  "name": "@sophiaxt/seo-ext-sophia-stack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sophia SEO Suite packaged as an installable Sophia Stack extension.",
+  "main": "./extension.js",
+  "files": ["extension.json", "extension.js", "admin/"],
+  "scripts": {
+    "lint": "echo \"(lint not configured yet)\"",
+    "pack:ext": "node ./scripts/pack.mjs"
+  }
+}

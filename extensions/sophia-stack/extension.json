@@ -1,0 +1,24 @@
+{
+  "id": "sophia-seo-suite",
+  "name": "Sophia SEO Suite",
+  "version": "0.1.0",
+  "publisher": "SophiaXT",
+  "description": "Modular, owner-safe SEO/GEO automation for Sophia Stack sites. Real audits, metadata tools, and JSON-LD schema — every write goes through validate-before-commit + rollback + audit.",
+  "entry": "./extension.js",
+  "adminEntry": "./admin/index.js",
+  "permissions": [
+    "site:read",
+    "site:patch",
+    "pages:read",
+    "pages:patch",
+    "media:read",
+    "settings:read",
+    "settings:write",
+    "ai:use",
+    "audit:read"
+  ],
+  "routes": ["/api/extensions/sophia-seo-suite/*"],
+  "adminNav": [{ "label": "SEO Suite", "path": "/admin/extensions/seo", "icon": "search" }],
+  "hooks": ["page.afterSave", "site.afterPatch", "media.afterUpload", "seo.audit.requested"],
+  "requires": { "sophiaStack": ">=1.0.0" }
+}

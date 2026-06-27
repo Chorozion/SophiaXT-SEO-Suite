@@ -1,0 +1,28 @@
+{
+  "name": "@sophiaxt/sophia-seo-suite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sophia SEO Suite — a modular, self-hosted SEO/GEO automation suite for SophiaXT. Connects to Sophia Stack (and other website systems) via a clean, safe, rollback-friendly connector interface.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter=./packages/* run build",
+    "dev": "pnpm --filter @sophiaxt/seo-dashboard dev",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "db:generate": "pnpm --filter @sophiaxt/seo-db prisma:generate",
+    "db:migrate": "pnpm --filter @sophiaxt/seo-db prisma:migrate",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.5.0"
+  }
+}
