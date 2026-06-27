@@ -18,9 +18,11 @@ follows [Keep a Changelog](https://keepachangelog.com/); the project uses
   labelled patch; HTTP/Mock transports gain named snapshots + targeted rollback;
   connector `listVersions`/`rollback(id)` are real; `planSchemaAddition` uses native
   `seo.jsonLd[]`; capabilities → `versioning: "addressable"`.
-- **One-click install (WS4):** release-channel descriptor
-  (`release/sophia-seo-suite/channel.json`) + release script (zip + sha256);
-  `docs/release-channel.md` proposes the fetch protocol for interlock.
+- **One-click install (WS4):** aligned to the Stack's live **direct git install**
+  (public-repo tarball, no auth) — button targets `extensions/sophia-stack` on
+  `main`; entry is self-contained ESM (`import()`-able, no build). Repo made
+  **public / source-available** (proprietary LICENSE retained). Zip/release-channel
+  kept as an optional offline-bundle path (WS5).
 - **Sync collateral:** `docs/compatibility.md` (matrix), `docs/v1.5-sync-checklist.md`
   (SEO half), `docs/screenshots/` placeholders.
 

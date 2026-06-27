@@ -113,11 +113,24 @@ pnpm dev
 
 ### Install into a Sophia Stack site
 
+**One-click (Sophia Stack v1.5+):** in the Stack dashboard, **Extensions → "Add
+Sophia SEO Suite"**. The Stack fetches this repo's `extensions/sophia-stack`
+directory, validates the manifest + `requires.sophiaStack`, and installs it
+non-destructively.
+
+Equivalent owner-session API call:
+
 ```bash
-pnpm --filter @sophiaxt/seo-ext-sophia-stack pack:ext
-cp -r extensions/sophia-stack/dist/sophia-seo-suite \
-      <deployment>/.sophia-data/extensions/sophia-seo-suite
-# restart the Stack, then enable as owner:
+curl -X POST <deployment>/api/sophia/extensions/install \
+  -H "Content-Type: application/json" \
+  -d '{ "repo": "Chorozion/SophiaXT-SEO-Suite", "subdir": "extensions/sophia-stack" }'
+```
+
+**Manual (any version / offline):** copy the folder in and enable it —
+
+```bash
+cp -r extensions/sophia-stack  <deployment>/.sophia-data/extensions/sophia-seo-suite
+# restart the Stack, then enable as owner via the dashboard or:
 #   POST /api/sophia/extensions { "id": "sophia-seo-suite", "enabled": true }
 ```
 
@@ -138,6 +151,7 @@ up in
 ## License
 
 **Proprietary — © 2026 SophiaXT LLC. All rights reserved.** See [`LICENSE`](LICENSE).
-This source is made available for reference; it is **not** licensed for
-redistribution, modification, or reuse without written permission. Not an
-open-source project (unlike the companion Sophia Stack).
+**Source-available:** this repository is public so Sophia Stack deployments can
+fetch and run the extension via one-click install, and for transparency — but it is
+**not** open-source. The source is **not** licensed for redistribution,
+modification, or reuse without written permission.

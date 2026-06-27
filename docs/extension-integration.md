@@ -70,18 +70,21 @@ Listens to `page.afterSave`, `site.afterPatch`, `media.afterUpload`; self-emits
 | Version / rollback | `ctx.versions.list()` enumerates named snapshots; `ctx.versions.rollbackTo(id)` reverts one change (R2, shipped). |
 | Audit log | `ctx.audit.log(action, details)`; owner reads via `GET /api/sophia/audit`. |
 
-## Install (today)
+## Install
 
-The install CLI is `(planned)`; install by copy:
+**One-click git install (Sophia Stack v1.5+, live):** the Stack fetches the public
+repo's `extensions/sophia-stack` directory (GitHub tarball, no auth), validates the
+manifest + `requires.sophiaStack`, and installs non-destructively. Dashboard →
+**Extensions → "Add Sophia SEO Suite"**, or:
 
 ```bash
-# build a clean copy, then drop it into a deployment
-pnpm --filter @sophiaxt/seo-ext-sophia-stack pack:ext
-cp -r extensions/sophia-stack/dist/sophia-seo-suite \
-      <deployment>/.sophia-data/extensions/sophia-seo-suite
-# restart the Stack, then enable as owner:
-#   POST /api/sophia/extensions { "id": "sophia-seo-suite", "enabled": true }
+POST /api/sophia/extensions/install
+{ "repo": "Chorozion/SophiaXT-SEO-Suite", "subdir": "extensions/sophia-stack" }
 ```
+
+The entry is self-contained ESM (no imports) so the Stack `import()`s it directly —
+no build. **Manual/offline** copy-install still works (see the extension README).
+Distribution detail: [`release-channel.md`](./release-channel.md).
 
 ## Build posture (from the contract)
 

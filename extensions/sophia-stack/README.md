@@ -7,21 +7,25 @@ real SEO audits + owner-safe metadata/schema tools.
 This is the **real integration** (the contract stub lives in the Sophia Stack repo
 at `examples/extensions/sophia-seo-suite-stub` and only proves the shape).
 
-## Install (today: copy-folder)
+## Install
 
-The Stack's install CLI is `(planned)`, so install by copy:
+**One-click (Sophia Stack v1.5+):** dashboard → **Extensions → "Add Sophia SEO
+Suite"**. The Stack fetches this public repo's `extensions/sophia-stack` directory
+(GitHub tarball, no auth), validates the manifest + `requires.sophiaStack`, and
+installs non-destructively. Equivalent owner-session call:
 
 ```bash
-# 1. Copy this folder into a Sophia Stack deployment:
-cp -r extensions/sophia-stack  <deployment>/.sophia-data/extensions/sophia-seo-suite
-#    …or run the Stack with SOPHIA_EXTENSIONS_DIR pointing at a dir containing it,
-#    or createServer({ extensionsDir }).
-
-# 2. Restart the Stack server, then enable it as the owner:
-#    POST /api/sophia/extensions  { "id": "sophia-seo-suite", "enabled": true }
+POST /api/sophia/extensions/install
+{ "repo": "Chorozion/SophiaXT-SEO-Suite", "subdir": "extensions/sophia-stack" }
 ```
 
-It loads if the deployment is Sophia Stack `>= 1.0.0` (manifest `requires`).
+The entry (`extension.js`) is self-contained ESM with no imports, so the Stack can
+`import()` it directly — no build step.
+
+**Manual / offline:** copy this folder into
+`<deployment>/.sophia-data/extensions/sophia-seo-suite` (or point
+`SOPHIA_EXTENSIONS_DIR` at it / `createServer({ extensionsDir })`), restart, and
+enable via the dashboard. It loads on Sophia Stack `>= 1.5.0` (manifest `requires`).
 
 ## What it does
 

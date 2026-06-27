@@ -1,78 +1,67 @@
-# Release channel — one-click install (proposal for interlock)
+# Install & distribution
 
-> File: docs/release-channel.md · For: Sophia Stack WS4 (one-click installer)
-> Status: PROPOSED — pending the Stack session's confirmation of the fetch format.
+> File: docs/release-channel.md · Aligns with Sophia Stack v1.5 WS4 (one-click install).
 
-The Stack's v1.5 "Add Sophia SEO Suite" button (WS4) fetches a published extension
-package from a release channel, verifies `requires.sophiaStack` + integrity,
-installs into `.sophia-data/extensions/sophia-seo-suite/`, and enables it —
-**non-destructively**. This doc proposes the channel format the Suite publishes so
-the two can interlock. **If the Stack already pins a format, we conform to it —
-this is a starting point, not a mandate.**
+## Primary: one-click git install (LIVE)
 
-## Channel descriptor
+Sophia Stack v1.5 installs extensions **straight from a public GitHub repo** — no
+release channel, no zip required. The installer:
 
-Published at a stable, fetchable URL. In-repo copy:
-`release/sophia-seo-suite/channel.json` (raw-fetchable from the repo at a ref).
+1. downloads the repo tarball (`codeload.github.com/<owner>/<repo>/tar.gz/refs/heads/<branch>`, no auth),
+2. finds `extension.json` at the given subdir,
+3. validates the manifest + `requires.sophiaStack`,
+4. installs non-destructively (backup → install → auto-rollback on any failure),
+5. surfaces the admin nav; owner can enable / disable / uninstall.
 
-```jsonc
-{
-  "id": "sophia-seo-suite",
-  "name": "Sophia SEO Suite",
-  "publisher": "SophiaXT",
-  "latest": "0.2.0",
-  "installDir": "sophia-seo-suite",          // → .sophia-data/extensions/<installDir>/
-  "versions": [
-    {
-      "version": "0.2.0",
-      "requires": { "sophiaStack": ">=1.5.0" }, // installer enforces this
-      "source": {                                // FETCH MODE A: from the repo at a ref
-        "repo": "Chorozion/SophiaXT-SEO-Suite",
-        "ref": "main",
-        "path": "extensions/sophia-stack",
-        "files": ["extension.json", "extension.js", "admin/index.js", "README.md"]
-      },
-      "artifact": {                              // FETCH MODE B: a release zip
-        "zip": "https://github.com/.../releases/download/seo-suite-v0.2.0/sophia-seo-suite-0.2.0.zip",
-        "sha256": "…",                           // integrity; verify before install
-        "bytes": 12345
-      },
-      "changelog": "…"
-    }
-  ]
-}
+**This repo is configured for it:**
+
+| Field | Value |
+| --- | --- |
+| repo | `Chorozion/SophiaXT-SEO-Suite` (**public**, source-available) |
+| branch | `main` |
+| subdir | `extensions/sophia-stack` |
+| entry | `extension.js` — self-contained ESM, `import()`-able, no build |
+| requires | `sophiaStack ">=1.5.0"` |
+
+The Stack's **"Add Sophia SEO Suite"** button points here. Manual test (owner
+session):
+
+```bash
+POST /api/sophia/extensions/install
+{ "repo": "Chorozion/SophiaXT-SEO-Suite", "subdir": "extensions/sophia-stack" }
 ```
 
-### Two fetch modes (installer picks one)
-- **A — repo source (git-verifiable):** fetch the listed files from `repo@ref:path`.
-  Integrity = the pinned ref/commit. No zip needed. Simplest for trusted repos.
-- **B — release zip (checksum-verifiable):** download `artifact.zip`, verify
-  `sha256`, unpack into `installDir`. The zip's contents are the extension files at
-  its root (`extension.json` at the top).
+The installer also accepts `owner/repo`, `owner/repo#branch`, or a
+`/tree/<branch>/<subdir>` GitHub URL.
 
-The zip + checksum are produced by `pnpm --filter @sophiaxt/seo-ext-sophia-stack release`
-(see `extensions/sophia-stack/scripts/release.mjs`), then attached to a GitHub
-Release tagged `seo-suite-v<version>`.
+### Why public + proprietary is consistent
+The extension runs inside each owner's Stack deployment, so its source must be
+fetchable to run. The repo is **source-available** (public) for that and for
+transparency; the `LICENSE` remains proprietary (no redistribution/reuse). See the
+README license note.
 
-## Install / update / uninstall — non-destructive contract
+## Non-destructive install / update / uninstall
 
-Aligns with the Stack's `docs/operations/updates.md` + the v1.5 non-destructive spec:
-
-- **Install:** owner logged-in → verify `requires` + integrity → write files into
-  `installDir` → enable → surface adminNav. No site data touched.
-- **Update:** same pipeline; our settings live in `tokens.extSettings` and **carry
-  forward automatically**. Any settings shape change is applied as a
-  **forward-idempotent** transform in our `activate()` (`migrateSettings`, gated by
+- **Install:** owner logged-in → validate `requires` + manifest → fetch + install
+  into `.sophia-data/extensions/sophia-seo-suite/` → enable. No site data touched.
+- **Update:** re-fetch; our settings live in `tokens.extSettings` and **carry
+  forward automatically**. Settings shape changes are applied as a
+  **forward-idempotent** transform in `activate()` (`migrateSettings`, gated by
   `settingsVersion`) — never a destructive rewrite.
-- **Uninstall:** remove the extension folder + disable. **No data loss:** SEO
-  metadata and JSON-LD we wrote live in the Site Model (`pages.<route>.seo.*`) and
-  remain the owner's — uninstalling the Suite does not strip their SEO work. Our
-  `deactivate()` deletes nothing.
+- **Uninstall:** removes only the extension dir. **No data loss:** SEO metadata and
+  JSON-LD we wrote live in the Site Model (`pages.<route>.seo.*`) and remain the
+  owner's. `deactivate()` deletes nothing.
 
-## Open questions for the Stack session (interlock)
-1. Which fetch mode does the WS4 installer implement first — repo source (A) or
-   release zip (B)? We support both; tell us which to prioritize.
-2. Exact channel URL/shape the installer expects (so `release/.../channel.json`
-   matches). Field names above are a proposal.
-3. Is a signature (beyond sha256) required for v1.5, or is checksum + pinned ref
-   sufficient?
+## Secondary (optional): packaged zip for offline bundling
+
+For the Stack's WS5 "ship a pinned SEO-Suite in the zip / offline" case, a
+versioned artifact can be produced:
+
+```bash
+pnpm --filter @sophiaxt/seo-ext-sophia-stack release   # → dist zip + sha256
+```
+
+This refreshes `release/sophia-seo-suite/channel.json` (id, version, `requires`,
+sha256) and builds `dist/sophia-seo-suite-<version>.zip`. Attach it to a GitHub
+Release tagged `seo-suite-v<version>` if an offline/pinned bundle is wanted. Not
+required for one-click install.
