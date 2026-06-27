@@ -1,15 +1,9 @@
-// Sophia SEO Suite — admin UI entry.
+// Sophia SEO Suite — admin UI entry (legacy/optional).
 //
-// `adminEntry` in the manifest points here. Mounting extension admin panels
-// inside the Sophia Stack dashboard is a PLANNED Stack integration point (the
-// dashboard surfaces our `adminNav` item but does not yet import/mount this
-// module). Until panel-mount ships, the Suite's owner UI is served from its own
-// routes under /api/extensions/sophia-seo-suite/* and this file stays
-// documentation-only.
-//
-// When panel mounting lands, this default export renders the owner dashboard
-// (audit view, metadata editor, schema tools), reading/writing exclusively
-// through the extension routes (never the model directly).
+// As of Stack v1.5, the live owner UI is rendered via `ctx.admin.registerPanel`
+// + the `/panel` route (see extension.js `PANEL_HTML`) — the Stack iframes that
+// same-origin as a dashboard tab. This `adminEntry` module is retained only as a
+// fallback descriptor for hosts that import it; it is not the primary path.
 export default {
   title: "SEO Suite",
   render() {

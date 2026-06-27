@@ -31,7 +31,7 @@ enable via the dashboard. It loads on Sophia Stack `>= 1.5.0` (manifest `require
 
 | Surface | Detail |
 | --- | --- |
-| **Admin nav** | "SEO Suite" item (`/admin/extensions/seo`). |
+| **Admin panel (R5)** | `ctx.admin.registerPanel` → a real owner UI tab at `/panel` (audit, metadata editor, schema, internal-links, versions/rollback). Falls back to a nav link on pre-R5 hosts. |
 | **Settings** | `defaultTitleSuffix`, `targetKeywords`, `autoAuditOnChange`, `tier`. |
 | **`GET /audit`** | Real audit over the live Site Model (titles, descriptions, H1, JSON-LD, site description) + score. Read-only. |
 | **`POST /plan-title`** | Preview a title change (optionally AI-suggested). Applies nothing. |

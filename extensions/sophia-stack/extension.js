@@ -45,7 +45,13 @@ export default {
     });
     migrateSettings(ctx);
 
-    ctx.admin.registerNav({ label: "SEO Suite", path: "/admin/extensions/seo", icon: "search" });
+    // R5 (shipped): render a real in-dashboard panel. Falls back to a nav link on
+    // pre-R5 hosts (the panel UI is also reachable at the /panel route directly).
+    if (ctx.admin && typeof ctx.admin.registerPanel === "function") {
+      ctx.admin.registerPanel({ label: "SEO Suite", path: "panel" });
+    } else {
+      ctx.admin.registerNav({ label: "SEO Suite", path: "/admin/extensions/seo", icon: "search" });
+    }
 
     const hasVersions = ctx.versions && typeof ctx.versions.list === "function";
 
@@ -181,8 +187,17 @@ export default {
         ok: true,
         ext: "sophia-seo-suite",
         version: ctx.manifest?.version ?? null,
-        caps: { versions: !!hasVersions, embed: typeof ctx.ai.embed === "function" },
+        caps: { versions: !!hasVersions, embed: typeof ctx.ai.embed === "function", panel: ctx.admin && typeof ctx.admin.registerPanel === "function" },
       });
+    });
+
+    // GET /panel — the owner UI (R5). Rendered by the Stack as a dashboard tab
+    // (iframed, same-origin → its fetches carry the owner session). The shell is
+    // static HTML; all data/actions go through the auth-gated routes above.
+    ctx.routes.register("/panel", async (req, res, _h) => {
+      res.statusCode = 200;
+      if (typeof res.setHeader === "function") res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.end(PANEL_HTML);
     });
 
     // --- Hooks: drive re-audits from content changes ---------------------
@@ -385,3 +400,127 @@ function actorOf(h) {
 function safeJson(raw) {
   try { return JSON.parse(raw || "{}"); } catch (_e) { return {}; }
 }
+
+/* ===========================================================================
+ * Owner panel UI (R5). Self-contained HTML; fetches the auth-gated routes with
+ * the owner session (same-origin). No external assets. Client JS uses string
+ * concatenation (no template literals) so this outer template literal is literal.
+ * ========================================================================= */
+
+const PANEL_HTML = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sophia SEO Suite</title>
+<style>
+  :root{--bg:#0a1628;--card:#0c1a28;--fg:#e8f4f8;--mut:#9fc7d6;--ac:#00D4FF;--line:rgba(0,212,255,.15)}
+  *{box-sizing:border-box}
+  body{font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:22px}
+  h1{color:var(--ac);margin:0 0 2px;font-size:20px}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 10px}
+  .sub{color:var(--mut);margin:0 0 18px;font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input,textarea{background:#08131f;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px}
+  input{min-width:120px}textarea{width:100%;min-height:70px;margin-top:8px;font-family:ui-monospace,Consolas,monospace}
+  button{background:linear-gradient(120deg,#00D4FF,#0066FF);color:#04121a;border:0;border-radius:9px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  button.ghost{background:transparent;color:var(--ac);border:1px solid var(--line)}
+  .score{font-size:34px;font-weight:800}
+  pre{background:#08131f;border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--mut);overflow:auto;font-size:12px;margin:10px 0 0}
+  .f{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .dot{width:9px;height:9px;border-radius:50%;margin-top:5px;flex:0 0 auto}
+  .hi{background:#ff5470}.me{background:#ffb454}.lo{background:#5a6b7a}
+  .muted{color:var(--mut);font-size:12px}
+  .ver{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+</style></head>
+<body>
+  <h1>Sophia SEO Suite</h1>
+  <p class="sub">Owner-safe SEO automation for this site. Every change is previewed and applied through validate-before-commit + targeted rollback.</p>
+
+  <div class="card">
+    <h2>Audit</h2>
+    <div class="row"><button onclick="runAudit()">Run SEO audit</button><span id="score" class="score muted">—</span></div>
+    <div id="findings"></div>
+  </div>
+
+  <div class="card">
+    <h2>Metadata</h2>
+    <div class="row">
+      <input id="m_route" placeholder="route e.g. /" value="/">
+      <input id="m_title" placeholder="title (optional → AI suggests)">
+      <button onclick="optTitle()">Optimize title</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input id="m_desc" placeholder="meta description" style="flex:1;min-width:240px">
+      <button onclick="optMeta()">Save meta</button>
+    </div>
+    <pre id="meta_out" class="muted">Sets native pages.&lt;route&gt;.seo.* — rendered in &lt;head&gt;.</pre>
+  </div>
+
+  <div class="card">
+    <h2>JSON-LD schema</h2>
+    <div class="row"><input id="s_route" placeholder="route" value="/"><button onclick="addSchema()">Add schema</button></div>
+    <textarea id="s_json">{"@context":"https://schema.org","@type":"Organization","name":"My Business"}</textarea>
+    <pre id="schema_out" class="muted">Appended to native seo.jsonLd[] (script-safe).</pre>
+  </div>
+
+  <div class="card">
+    <h2>Internal links (AI)</h2>
+    <div class="row"><button class="ghost" onclick="suggest()">Suggest internal links</button></div>
+    <pre id="links_out" class="muted">Read-only suggestions via embeddings.</pre>
+  </div>
+
+  <div class="card">
+    <h2>Versions &amp; rollback</h2>
+    <div class="row"><button class="ghost" onclick="loadVersions()">Refresh versions</button></div>
+    <div id="versions"></div>
+  </div>
+
+<script>
+  var API='/api/extensions/sophia-seo-suite';
+  function J(){return {credentials:'same-origin',headers:{'Content-Type':'application/json'}};}
+  async function get(p){var r=await fetch(API+p,{credentials:'same-origin'});return r.json();}
+  async function post(p,b){var o=J();o.method='POST';o.body=JSON.stringify(b||{});var r=await fetch(API+p,o);return r.json();}
+  function esc(s){return String(s).replace(/[&<>]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':'&gt;';});}
+
+  async function runAudit(){
+    document.getElementById('score').textContent='…';
+    try{
+      var d=await get('/audit');
+      document.getElementById('score').textContent=(d.score!=null?d.score:'?')+' / 100';
+      document.getElementById('score').className='score';
+      var html='';
+      (d.findings||[]).forEach(function(f){
+        var sev=f.severity==='high'||f.severity==='critical'?'hi':(f.severity==='medium'?'me':'lo');
+        var where=f.target&&f.target.pageId?f.target.pageId:(f.target&&f.target.scope||'');
+        html+='<div class="f"><span class="dot '+sev+'"></span><div><div>'+esc(f.title)+'</div>'
+            +'<div class="muted">'+esc(f.code)+' · '+esc(where)+(f.suggestion?' → '+esc(f.suggestion):'')+'</div></div></div>';
+      });
+      document.getElementById('findings').innerHTML=html||'<p class="muted">No findings — clean.</p>';
+    }catch(e){document.getElementById('findings').innerHTML='<p class="muted">'+esc(e)+'</p>';}
+  }
+  async function optTitle(){
+    var b={route:document.getElementById('m_route').value};
+    var t=document.getElementById('m_title').value;if(t)b.title=t;
+    show('meta_out',await post('/optimize-title',b));
+  }
+  async function optMeta(){
+    var b={route:document.getElementById('m_route').value,description:document.getElementById('m_desc').value};
+    show('meta_out',await post('/optimize-meta',b));
+  }
+  async function addSchema(){
+    var j;try{j=JSON.parse(document.getElementById('s_json').value);}catch(e){return show('schema_out',{error:'invalid JSON'});}
+    show('schema_out',await post('/add-schema',{route:document.getElementById('s_route').value,jsonLd:j}));
+  }
+  async function suggest(){show('links_out',{loading:true});show('links_out',await get('/suggest-links'));}
+  async function loadVersions(){
+    var d=await get('/versions');var html='';
+    (d.versions||[]).forEach(function(v){
+      html+='<div class="ver"><span>'+esc(v.label||v.id)+' <span class="muted">'+esc(v.id)+'</span></span>'
+          +'<button class="ghost" onclick="rollback(\\''+esc(v.id)+'\\')">Roll back</button></div>';
+    });
+    document.getElementById('versions').innerHTML=html||'<p class="muted">No snapshots yet.</p>';
+  }
+  async function rollback(id){if(!confirm('Roll back to '+id+'?'))return;await post('/rollback',{id:id});loadVersions();runAudit();}
+  function show(id,obj){document.getElementById(id).textContent=JSON.stringify(obj,null,2);document.getElementById(id).className='';}
+  runAudit();
+</script>
+</body></html>`;

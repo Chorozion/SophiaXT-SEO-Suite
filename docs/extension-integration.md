@@ -53,7 +53,16 @@ manifest `requires.sophiaStack ">=1.5.0"` is the real gate).
 - `GET /suggest-links` — read-only internal-link suggestions via `ctx.ai.embed`.
 - `GET /versions` — enumerable named snapshots (R2).
 - `POST /rollback {id}` — targeted rollback of one change (R2), auth-gated.
+- `GET /panel` — the owner UI (R5), rendered by the Stack as a dashboard tab.
 - `GET /health` — liveness + version + capability snapshot.
+
+### Admin panel (R5)
+`ctx.admin.registerPanel({ label: "SEO Suite", path: "panel" })` registers an
+in-dashboard tab; the Stack iframes `/panel` same-origin so its `fetch`es carry the
+owner session. The panel is a self-contained HTML UI that drives the routes above
+(audit, metadata editor, schema, internal-links, versions/rollback). On a pre-R5
+host the extension falls back to `registerNav` and the same UI is reachable at the
+`/panel` route directly.
 
 ### Hooks
 Listens to `page.afterSave`, `site.afterPatch`, `media.afterUpload`; self-emits

@@ -22,13 +22,13 @@ The extension feature-detects (`ctx.versions`, `ctx.ai.embed`) and degrades
 gracefully, but `requires: ">=1.5.0"` is the real gate — the installer refuses to
 install it on an older deployment.
 
-## Pending Stack capabilities (consumed when they land this cycle)
+## Consumed when shipped
 
-| Capability | We switch on |
+| Capability | Status / what we did |
 | --- | --- |
-| R3 — core fires `seo.audit.requested` + publish/pre-save hooks | drop the self-emit shim; trigger audits/pre-publish checks natively |
-| R4 — `ctx.jobs` execution | move re-audits to background jobs (off inline) |
-| R5 — `adminEntry` panel mount | move the owner UI from routes into the dashboard panel |
+| R5 — admin-panel rendering | ✅ **SHIPPED + CONSUMED.** `ctx.admin.registerPanel({label,path:"panel"})` + a real owner UI served at `/panel` (audit, metadata editor, schema, internal-links, versions/rollback). Falls back to `registerNav` on pre-R5 hosts. |
+| R3 — core fires `seo.audit.requested` + publish/pre-save hooks | 🔜 pending — drop the self-emit shim; trigger audits/pre-publish checks natively |
+| R4 — `ctx.jobs` execution | 🔜 pending — move re-audits to background jobs (off inline) |
 
-When the Stack promotes any of these (watch the coordination doc), bump a minor
-version and update this matrix.
+When the Stack promotes any remaining item (watch the coordination doc), bump a
+minor version and update this matrix.

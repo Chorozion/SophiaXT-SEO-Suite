@@ -57,13 +57,13 @@ We run audits inline in routes/hooks for now.
 **Ask:** execute registered jobs so scheduled re-audits and weekly reports run
 without an inline trigger.
 
-## R5 — Admin panel rendering (`adminEntry`) · P1 · 🔜 this cycle
+## R5 — Admin panel rendering · P1 · ✅ SHIPPED
 
-The dashboard surfaces our `adminNav` but doesn't mount `adminEntry`. Our owner UI
-is served from our own routes meanwhile.
-
-**Ask:** the panel-mount contract so we can ship a real in-dashboard SEO panel
-(audit view, metadata editor, schema tools).
+`ctx.admin.registerPanel({ label, path })` + serve HTML at that route; the Stack
+renders it as its own dashboard tab (iframed, same-origin → fetches carry the owner
+session). **Consumed:** the Suite registers a panel and serves a full owner UI at
+`/panel` (audit, metadata editor, schema, internal-links, versions/rollback), with
+a `registerNav` fallback on pre-R5 hosts.
 
 ## R7 — Data-model registration via `ctx` · P1 · planned
 
@@ -110,6 +110,7 @@ redirect map for page renames.
 With R1/R2/`embed` shipped, the Suite now operates fully: **titles, description,
 canonical, robots, Open Graph, Twitter, and JSON-LD = applied & served in `<head>`**;
 **targeted rollback by snapshot id = live**; **internal-link suggestions via
-embeddings = live**. Remaining asks (R3–R10) are conveniences and background
-automation; we keep self-emit/inline workarounds for R3/R4/R5 until they land this
-cycle, then switch them off (see `docs/compatibility.md`).
+embeddings = live**; **owner panel UI = live** (R5 shipped + consumed). Remaining
+asks (R3, R4, R7–R10) are conveniences and background automation; we keep
+self-emit/inline workarounds for R3/R4 until they land this cycle, then switch them
+off (see `docs/compatibility.md`).

@@ -73,7 +73,8 @@ coordination channel:
 - [x] `ctx.ai.embed` — **SHIPPED**, used by `/suggest-links`
 - [ ] R3 — core-fired `seo.audit.requested` + publish/pre-save hooks (🔜 this cycle → drop self-emit)
 - [ ] R4 — `ctx.jobs` execution (🔜 this cycle → move re-audits to jobs)
-- [ ] R5 — `adminEntry` panel mount (🔜 this cycle → move UI off raw routes)
+- [x] R5 — admin-panel mount — **SHIPPED + CONSUMED** (`ctx.admin.registerPanel` +
+      `/panel` owner UI; `registerNav` fallback)
 - [ ] R7–R10 — data-model registration, `media:write`, `audit:read`, configurable robots/llms + redirects (planned)
 - [ ] Interlock release-channel fetch format with the Stack; publish `seo-suite-v0.2.0`
 - [ ] Live-test in a running v1.5 Stack; capture WS7 SEO screenshots

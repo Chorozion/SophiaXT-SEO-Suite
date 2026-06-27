@@ -8,7 +8,10 @@ follows [Keep a Changelog](https://keepachangelog.com/); the project uses
 
 ### v1.5 alignment — extension `0.2.0` (targets Sophia Stack v1.5 "Stable")
 - **Build on shipped Stack surfaces:** native SEO `<head>` metadata (R1),
-  enumerable versions + targeted rollback (R2), `ctx.ai.embed`.
+  enumerable versions + targeted rollback (R2), `ctx.ai.embed`, **admin panels (R5)**.
+- **R5 owner panel:** `ctx.admin.registerPanel` + a real self-contained UI at
+  `/panel` (audit, metadata editor, JSON-LD schema, internal-link suggestions,
+  versions + rollback); `registerNav` fallback on pre-R5 hosts.
 - **Extension:** `requires.sophiaStack ">=1.5.0"`; labelled patches; `/optimize-meta`
   now sets native `pages.<route>.seo.*` (rendered in `<head>`); `/add-schema` appends
   to native `seo.jsonLd[]`; new `/suggest-links` (embed-based, read-only), `/versions`,
