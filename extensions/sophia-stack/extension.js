@@ -118,7 +118,7 @@ export default {
       if (!body.jsonLd || typeof body.jsonLd !== "object") return h.send(res, 400, { error: "jsonLd object required" });
       const model = ctx.site.read();
       if (!(model.pages || {})[route]) return h.send(res, 404, { error: `unknown route: ${route}` });
-      const id = `seo-jsonld-${slug(route)}-${Object.keys(model.pages[route].blocks || {}).length + 1}`;
+      const id = `seo-jsonld-${slug(route)}-${(model.pages[route].blocks || []).length + 1}`;
       const json = escapeForScript(JSON.stringify(body.jsonLd));
       const block = { id, type: "html", html: `<script type="application/ld+json">${json}</script>` };
       const r = ctx.site.patch([{ op: "add", route, value: block }]);
